@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const gplay = require('google-play-scraper');
+const gplay = require('google-play-scraper').default;
 
 const IOS_APP_ID = '1144883205';
 const ANDROID_APP_ID = 'tw.gov.newTaipeiApp.android';
