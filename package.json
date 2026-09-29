@@ -1,0 +1,12 @@
+{
+  "name": "newtaipei-app-rating-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Daily App Store and Google Play rating tracker for 我的新北市",
+  "scripts": {
+    "fetch": "node scripts/fetch-ratings.cjs"
+  },
+  "dependencies": {
+    "google-play-scraper": "^10.1.2"
+  }
+}
