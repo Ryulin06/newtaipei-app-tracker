@@ -1,1 +1,19 @@
-[]
+[
+  {
+    "date": "2026-09-29",
+    "fetchedAt": "2026-09-29T09:51:23.304Z",
+    "ios": {
+      "rating": 3.29,
+      "reviewCount": 714,
+      "version": "2.0.6",
+      "source": "https://apps.apple.com/tw/app/%E6%88%91%E7%9A%84%E6%96%B0%E5%8C%97%E5%B8%82/id1144883205?uo=4"
+    },
+    "android": {
+      "rating": 3.78,
+      "reviewCount": 1008,
+      "writtenReviews": 520,
+      "version": "2.0.6",
+      "source": "https://play.google.com/store/apps/details?id=tw.gov.newTaipeiApp.android&hl=zh_TW&gl=tw"
+    }
+  }
+]
