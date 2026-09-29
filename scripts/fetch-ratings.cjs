@@ -16,14 +16,16 @@ function taipeiDate() {
     day: '2-digit'
   }).formatToParts(new Date());
 
-  const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
-  return `${map.year}-${map.month}-${map.day}`;
+  const map = Object.fromEntries(parts.map(function (p) {
+    return [p.type, p.value];
+  }));
+
+  return map.year + '-' + map.month + '-' + map.day;
 }
 
 function round2(n) {
-  return n == null || Number.isNaN(Number(n))
-    ? null
-    : Math.round(Number(n) * 100) / 100;
+  if (n == null || Number.isNaN(Number(n))) return null;
+  return Math.round(Number(n) * 100) / 100;
 }
 
 function parseCount(value) {
@@ -47,12 +49,6 @@ function parseCount(value) {
   } else if (s.endsWith('B')) {
     multiplier = 1000000000;
     numeric = s.slice(0, -1);
-  } else if (s.endsWith('萬')) {
-    multiplier = 10000;
-    numeric = s.slice(0, -1);
-  } else if (s.endsWith('千')) {
-    multiplier = 1000;
-    numeric = s.slice(0, -1);
   }
 
   const n = Number(numeric);
@@ -60,7 +56,7 @@ function parseCount(value) {
 }
 
 async function fetchIOS() {
-  const url = `https://itunes.apple.com/lookup?id=${IOS_APP_ID}&country=tw`;
+  const url = 'https://itunes.apple.com/lookup?id=' + IOS_APP_ID + '&country=tw';
 
   const res = await fetch(url, {
     headers: {
@@ -69,7 +65,7 @@ async function fetchIOS() {
   });
 
   if (!res.ok) {
-    throw new Error(`Apple Lookup API HTTP ${res.status}`);
+    throw new Error('Apple Lookup API HTTP ' + res.status);
   }
 
   const json = await res.json();
@@ -81,16 +77,161 @@ async function fetchIOS() {
 
   return {
     rating: round2(app.averageUserRating),
-    reviewCount: Number(app.userRatingCount ?? 0),
-    version: app.version ?? null,
-    source: app.trackViewUrl ?? `https://apps.apple.com/tw/app/id${IOS_APP_ID}`
+    reviewCount: Number(app.userRatingCount || 0),
+    version: app.version || null,
+    source: app.trackViewUrl || ('https://apps.apple.com/tw/app/id' + IOS_APP_ID)
   };
 }
 
-/**
- * 直接讀取 Google Play 公開商店頁面上顯示的評論/評分數。
- *
- * Google Play 頁面常把「所有評分數」顯示成 "... reviews"，
- * 這個數字可能和 google-play-scraper 的 ratings 有短暫不同步。
- *
- * 這裡優先採用頁面顯示值；抓不到時才 fallback 到 scraper。
+async function fetchGooglePlayVisibleReviewCount() {
+  const url =
+    'https://play.google.com/store/apps/details?id=' +
+    ANDROID_APP_ID +
+    '&hl=en&gl=TW';
+
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
+        'AppleWebKit/537.36 (KHTML, like Gecko) ' +
+        'Chrome/140.0.0.0 Safari/537.36',
+      'Accept-Language': 'en-US,en;q=0.9'
+    }
+  });
+
+  if (!res.ok) {
+    throw new Error('Google Play page HTTP ' + res.status);
+  }
+
+  const html = await res.text();
+
+  const patterns = [
+    /aria-label="[^"]*?([\d,.]+(?:[KMB])?)\s+(?:ratings|reviews)[^"]*?"/gi,
+    />([\d,.]+(?:[KMB])?)\s+(?:ratings|reviews)</gi,
+    /([\d,.]+(?:[KMB])?)\s+(?:ratings|reviews)/gi
+  ];
+
+  const candidates = [];
+
+  for (const pattern of patterns) {
+    let match;
+
+    while ((match = pattern.exec(html)) !== null) {
+      const n = parseCount(match[1]);
+
+      if (n != null && n > 0) {
+        candidates.push(n);
+      }
+    }
+
+    if (candidates.length > 0) {
+      break;
+    }
+  }
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return Math.max.apply(null, candidates);
+}
+
+async function fetchAndroid() {
+  const app = await gplay.app({
+    appId: ANDROID_APP_ID,
+    lang: 'zh_TW',
+    country: 'tw'
+  });
+
+  let visibleReviewCount = null;
+
+  try {
+    visibleReviewCount = await fetchGooglePlayVisibleReviewCount();
+  } catch (err) {
+    console.warn(
+      'Google Play visible count failed; using scraper count: ' + err.message
+    );
+  }
+
+  const scraperReviewCount = Number(app.ratings || app.reviews || 0);
+
+  return {
+    rating: round2(app.score),
+    reviewCount:
+      visibleReviewCount != null
+        ? visibleReviewCount
+        : scraperReviewCount,
+    scraperReviewCount: scraperReviewCount,
+    writtenReviews:
+      app.reviews == null
+        ? null
+        : Number(app.reviews),
+    version: app.version || null,
+    source:
+      app.url ||
+      ('https://play.google.com/store/apps/details?id=' +
+        ANDROID_APP_ID +
+        '&hl=zh_TW&gl=TW')
+  };
+}
+
+async function main() {
+  const date = taipeiDate();
+
+  const results = await Promise.all([
+    fetchIOS(),
+    fetchAndroid()
+  ]);
+
+  const ios = results[0];
+  const android = results[1];
+
+  let history = [];
+
+  if (fs.existsSync(OUT)) {
+    try {
+      history = JSON.parse(fs.readFileSync(OUT, 'utf8'));
+    } catch (err) {
+      history = [];
+    }
+  }
+
+  if (!Array.isArray(history)) {
+    history = [];
+  }
+
+  const record = {
+    date: date,
+    fetchedAt: new Date().toISOString(),
+    ios: ios,
+    android: android
+  };
+
+  const index = history.findIndex(function (r) {
+    return r.date === date;
+  });
+
+  if (index >= 0) {
+    history[index] = record;
+  } else {
+    history.push(record);
+  }
+
+  history.sort(function (a, b) {
+    return a.date.localeCompare(b.date);
+  });
+
+  fs.mkdirSync(path.dirname(OUT), { recursive: true });
+  fs.writeFileSync(
+    OUT,
+    JSON.stringify(history, null, 2) + '\n',
+    'utf8'
+  );
+
+  console.log(JSON.stringify(record, null, 2));
+}
+
+main().catch(function (err) {
+  console.error(err);
+  process.exit(1);
+});
