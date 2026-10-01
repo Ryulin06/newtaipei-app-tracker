@@ -2,7 +2,6 @@ name: Daily App Rating Fetch
 
 on:
   schedule:
-    # GitHub Actions cron uses UTC. 00:10 UTC = 08:10 Asia/Taipei.
     - cron: '10 0 * * *'
   workflow_dispatch:
 
@@ -12,6 +11,7 @@ permissions:
 jobs:
   fetch:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,7 +24,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Fetch ratings
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Fetch ratings from visible store pages
         run: npm run fetch
 
       - name: Commit daily data
@@ -33,7 +36,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/history.json
           if git diff --cached --quiet; then
-            echo "No changes"
+            echo "No changes to commit"
           else
             git commit -m "data: update app ratings $(TZ=Asia/Taipei date +%F)"
             git push
