@@ -482,5 +482,23 @@
       "source": "https://play.google.com/store/apps/details?id=tw.gov.newTaipeiApp.android&hl=zh_TW&gl=TW",
       "method": "playwright-visible-page"
     }
+  },
+  {
+    "date": "2026-10-26",
+    "fetchedAt": "2026-10-26T04:39:15.628Z",
+    "ios": {
+      "rating": 3.31,
+      "reviewCount": 723,
+      "version": "2.0.7",
+      "source": "https://apps.apple.com/tw/app/%E6%88%91%E7%9A%84%E6%96%B0%E5%8C%97%E5%B8%82/id1144883205?uo=4"
+    },
+    "android": {
+      "rating": 3.9,
+      "reviewCount": 1020,
+      "reviewCountDisplay": "1020",
+      "version": null,
+      "source": "https://play.google.com/store/apps/details?id=tw.gov.newTaipeiApp.android&hl=zh_TW&gl=TW",
+      "method": "playwright-visible-page"
+    }
   }
 ]
